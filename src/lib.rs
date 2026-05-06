@@ -5,7 +5,7 @@ use chromiumoxide::{
 use futures::StreamExt;
 
 pub async fn render(html: &str, width: u32, height: u32) -> chromiumoxide::error::Result<Vec<u8>> {
-    let (browser, mut handler) = Browser::launch(
+    let (mut browser, mut handler) = Browser::launch(
         BrowserConfig::builder()
             .new_headless_mode()
             .viewport(Some(Viewport {
@@ -26,12 +26,20 @@ pub async fn render(html: &str, width: u32, height: u32) -> chromiumoxide::error
     let page = browser.new_page("about:blank").await?;
     page.set_content(html).await?;
 
-    page.screenshot(
-        ScreenshotParams::builder()
-            .format(CaptureScreenshotFormat::Png)
-            .full_page(true)
-            .omit_background(true)
-            .build(),
-    )
-    .await
+    let image = page
+        .screenshot(
+            ScreenshotParams::builder()
+                .format(CaptureScreenshotFormat::Png)
+                .full_page(true)
+                .omit_background(true)
+                .build(),
+        )
+        .await?;
+
+    tokio::spawn(async move {
+        let _ = browser.close().await;
+        let _ = browser.wait().await;
+    });
+
+    Ok(image)
 }
