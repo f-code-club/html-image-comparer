@@ -1,28 +1,37 @@
-use chromiumoxide::{Browser, BrowserConfig};
+use chromiumoxide::{
+    Browser, BrowserConfig, cdp::browser_protocol::page::CaptureScreenshotFormat,
+    handler::viewport::Viewport, page::ScreenshotParams,
+};
 use futures::StreamExt;
 
-pub struct Renderer {
-    pub browser: Browser,
-}
+pub async fn render(html: &str, width: u32, height: u32) -> chromiumoxide::error::Result<Vec<u8>> {
+    let (browser, mut handler) = Browser::launch(
+        BrowserConfig::builder()
+            .new_headless_mode()
+            .viewport(Some(Viewport {
+                width,
+                height,
+                ..Default::default()
+            }))
+            .build()
+            .expect("config for headless browser must be valid"),
+    )
+    .await?;
+    tokio::spawn(async move {
+        loop {
+            let _ = handler.next().await.unwrap();
+        }
+    });
 
-impl Renderer {
-    pub async fn new() -> chromiumoxide::error::Result<Self> {
-        let (browser, mut handler) = Browser::launch(
-            BrowserConfig::builder()
-                .new_headless_mode()
-                .build()
-                .expect("config for headless browser must be valid"),
-        )
-        .await?;
+    let page = browser.new_page("about:blank").await?;
+    page.set_content(html).await?;
 
-        tokio::spawn(async move {
-            while let Some(h) = handler.next().await {
-                if h.is_err() {
-                    break;
-                }
-            }
-        });
-
-        Ok(Self { browser })
-    }
+    page.screenshot(
+        ScreenshotParams::builder()
+            .format(CaptureScreenshotFormat::Png)
+            .full_page(true)
+            .omit_background(true)
+            .build(),
+    )
+    .await
 }
