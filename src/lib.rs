@@ -19,7 +19,7 @@ pub async fn render(html: &str, width: u32, height: u32) -> chromiumoxide::error
     .await?;
     tokio::spawn(async move {
         loop {
-            let _ = handler.next().await.unwrap();
+            let _ = handler.next().await;
         }
     });
 
