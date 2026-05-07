@@ -1,6 +1,6 @@
 # HTML Renderer
 
-HTML renderer project written in Rust.
+HTML renderer project written in Rust
 
 ## Usage
 ```rust
